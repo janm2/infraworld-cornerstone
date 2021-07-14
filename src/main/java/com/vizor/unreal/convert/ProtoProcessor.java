@@ -229,7 +229,7 @@ class ProtoProcessor implements Runnable
             dispatchers.addAll(cg.getDelegates());
         }
 
-        final String pathToProtoStr = removeExtension(args.pathToProto.toString());
+        final String pathToProtoStr = removeExtension(args.pathToProto.getFileName().toString());
         DestinationConfig dstPath = Config.get().getDstPath();
 
         // Should create an output directories if does not exit.
@@ -274,7 +274,7 @@ class ProtoProcessor implements Runnable
         // TODO: Fix paths
         
         final String generatedIncludeNamePublic = join("/", config.getWrappersPath(),
-                removeExtension(pathToProtoStr)).replace("\\", pathSeparator);
+               pathToProtoStr).replace("\\", pathSeparator);
         
         final String generatedIncludeName =  publicIncludePath + "/" + generatedIncludeNamePublic;//, args.wrapperName);
 
