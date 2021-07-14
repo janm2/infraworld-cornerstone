@@ -56,6 +56,7 @@ import static com.vizor.unreal.tree.CppAnnotation.BlueprintReadWrite;
 import static com.vizor.unreal.tree.CppAnnotation.BlueprintType;
 import static com.vizor.unreal.tree.CppAnnotation.DisplayName;
 import static com.vizor.unreal.tree.CppAnnotation.Transient;
+import static com.vizor.unreal.tree.CppAnnotation.Category;
 import static com.vizor.unreal.tree.CppRecord.Residence.Cpp;
 import static com.vizor.unreal.tree.CppRecord.Residence.Header;
 import static com.vizor.unreal.tree.CppType.Kind.Enum;
@@ -381,11 +382,6 @@ class ProtoProcessor implements Runnable
     {
         final CppType type = provider.get(me.name());
 
-        final List<CppAnnotation> fieldAnnotations = new ArrayList<>();
-
-        fieldAnnotations.add(Transient);
-        fieldAnnotations.add(BlueprintReadWrite);
-
         final List<CppField> fields = new ArrayList<>();
         for (final FieldElement fe : me.fields())
         {
@@ -410,7 +406,9 @@ class ProtoProcessor implements Runnable
             if (!sourceDoc.isEmpty())
                 field.javaDoc.set(sourceDoc);
 
-            field.addAnnotation(fieldAnnotations);
+            field.addAnnotation(Category, "gRPC");
+            field.addAnnotation(Transient);
+            field.addAnnotation(BlueprintReadWrite);
             fields.add(field);
         }
 
