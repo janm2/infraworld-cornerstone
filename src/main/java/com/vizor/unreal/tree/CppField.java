@@ -17,10 +17,14 @@ package com.vizor.unreal.tree;
 
 import com.vizor.unreal.writer.CppPrinter;
 
+import java.util.List;
+import java.util.ArrayList;
+
 public class CppField extends CppRecord
 {
     private final CppType type;
     private final String name;
+    private final List<CppType> SubTypes; // only for oneOf
 
     public final CppJavaDoc javaDoc = new CppJavaDoc();
 
@@ -28,6 +32,7 @@ public class CppField extends CppRecord
     {
         this.type = type;
         this.name = name;
+        this.SubTypes = new ArrayList<>();
     }
 
     public CppType getType()
@@ -38,6 +43,16 @@ public class CppField extends CppRecord
     public String getName()
     {
         return name;
+    }
+    
+    public boolean isVariant()
+    {
+    	return !SubTypes.isEmpty();
+    }
+    
+    public List<CppType> getSubTypes()
+    {
+    	return SubTypes;
     }
 
     @Override

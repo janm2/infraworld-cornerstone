@@ -167,13 +167,13 @@ class CastGenerator
             return format(castPattern, outField.getName(), params.stream().map(CppType::toString).collect(joining(", ")),
                     inField.getName());
         }
-        else if(inType.isVariant())
+        else if(inField.isVariant())
         {
             StringBuilder switchBody = new StringBuilder(String.format("switch (%s.%s_case())",inputItemName,inField.getName()));
             switchBody.append(lineSeparator()).append('{').append(lineSeparator());
 
-            List<CppType> outParams = outField.getType().getVariantParams();
-            List<CppType> inParams = inField.getType().getVariantParams();
+            List<CppType> outParams = outField.getSubTypes();
+            List<CppType> inParams = inField.getSubTypes();
             for(int i=0; i<outParams.size(); i++)
             {
                 switchBody.append(String.format("\tcase %s::%sCase::k%s:",inStructType.toString(),outField.getName(), capitalise(outParams.get(i).getVariantName()))).append(lineSeparator());
@@ -233,20 +233,24 @@ class CastGenerator
             final String pattern = outputItemName + ".mutable_{0}()->CopyFrom(" + castMethod.getMethodName() + "<{1}>(" + inputItemName + ".{2}));";
             completeCast =  format(pattern, outField.getName(), paramsArgs, inField.getName());
         }
-        else if(inType.isVariant())
+        else if(inField.isVariant())
         {
             StringBuilder switchBody = new StringBuilder(String.format("switch (InItem.%s.GetIndex())",inField.getName()));
             switchBody.append(lineSeparator()).append('{').append(lineSeparator());
             AtomicInteger index = new AtomicInteger(0);
-            outField.getType().getVariantParams().forEach(param -> {
+            outField.getSubTypes().forEach(param -> {
                 switchBody.append(String.format("\tcase %d:",index.get())).append(lineSeparator());
-                if(isMessageNamespace(param.toString()))
+                if(isMessageNamespace(param.toString()) && !param.isKindOf(CppType.Kind.Primitive))
                 {
-                    switchBody.append(String.format("\t\t%s.set_allocated_%s(new %s(Proto_Cast<%s>(%s.%s.Get<%s>())));",outputItemName,param.getVariantName(),param.toString(),param.toString(),inputItemName,inField.getName(),inField.getType().getVariantParams().get(index.get()).toString())).append(lineSeparator());
+                    switchBody.append(String.format("\t\t%s.set_allocated_%s(new %s(Proto_Cast<%s>(%s.%s.Get<%s>())));",
+                    					outputItemName,param.getVariantName(),param.toString(),param.toString(),
+                    					inputItemName,inField.getName(),inField.getSubTypes().get(index.get()).toString())).append(lineSeparator());
                 }
                 else
                 {
-                    switchBody.append(String.format("\t\t%s.set_%s(Proto_Cast<%s>(%s.%s.Get<%s>()));",outputItemName,param.getVariantName(),param.toString(),inputItemName,inField.getName(),inField.getType().getVariantParams().get(index.get()).toString())).append(lineSeparator());
+                    switchBody.append(String.format("\t\t%s.set_%s(Proto_Cast<%s>(%s.%s.Get<%s>()));",
+                    					outputItemName,param.getVariantName(),param.toString(),inputItemName,
+                    					inField.getName(),inField.getSubTypes().get(index.get()).toString())).append(lineSeparator());
                 }
                 switchBody.append("\t\tbreak;").append(lineSeparator());
                 index.getAndIncrement();

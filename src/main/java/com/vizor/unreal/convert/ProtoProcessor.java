@@ -22,6 +22,7 @@ import com.squareup.wire.schema.internal.parser.MessageElement;
 import com.squareup.wire.schema.internal.parser.ProtoFileElement;
 import com.squareup.wire.schema.internal.parser.ServiceElement;
 import com.squareup.wire.schema.internal.parser.TypeElement;
+import com.sun.tools.sjavac.Log;
 import com.squareup.wire.schema.internal.parser.OneOfElement;
 import com.vizor.unreal.config.Config;
 import com.vizor.unreal.config.DestinationConfig;
@@ -198,6 +199,7 @@ class ProtoProcessor implements Runnable
 
         // Topologically sort structures
         final MessageOrderResolver resolver = new MessageOrderResolver();
+        
         final int[] indices = resolver.sortByInclusion(unrealStructures);
 
         // Then reorder data types
@@ -415,18 +417,19 @@ class ProtoProcessor implements Runnable
         for(final OneOfElement onf : me.oneOfs())
         {
             final CppType ueType = provider.get("oneof");
-
-            ueType.getVariantParams().addAll(onf.fields().stream().map(i ->
+            
+            final String fieldName = provider.fixFieldName(onf.name(), ueType.isA(boolean.class));
+            final CppField field = new CppField(ueType, fieldName);;
+            
+            log.debug("adding OneOfElement:");
+            field.getSubTypes().addAll(onf.fields().stream().map(i ->
             {
                 CppType t = provider.get(i.type());
+                log.debug("type:" + t.toString() );
                 t.setVariantName(provider.fixFieldName(i.name(), ueType.isA(boolean.class)));
                 return t;
             }).collect(Collectors.toList()));
-
-            final CppField field;
-
-            final String fieldName = provider.fixFieldName(onf.name(), ueType.isA(boolean.class));
-            field = new CppField(ueType, fieldName);
+            
 
             final String sourceDoc = onf.documentation();
             if (!sourceDoc.isEmpty())

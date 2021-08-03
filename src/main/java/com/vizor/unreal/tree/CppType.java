@@ -16,6 +16,7 @@
 package com.vizor.unreal.tree;
 
 
+import com.vizor.unreal.util.MessageOrderResolver;
 import com.vizor.unreal.writer.CppPrinter;
 
 import java.util.ArrayList;
@@ -25,6 +26,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+
+import org.apache.logging.log4j.Logger;
 
 import static com.vizor.unreal.tree.CppType.Kind.Wildcard;
 import static java.util.Arrays.asList;
@@ -37,10 +40,13 @@ import static java.util.Objects.isNull;
 import static java.util.Objects.nonNull;
 import static java.util.Objects.requireNonNull;
 import static java.util.stream.Collectors.joining;
+import static org.apache.logging.log4j.LogManager.getLogger;
 
 @SuppressWarnings("unused")
 public class CppType implements CtLeaf
 {
+	private static final Logger log = getLogger(CppType.class);
+	
     private static final CppType wildcard = plain("?", Wildcard);
 
     public enum Passage
@@ -119,7 +125,7 @@ public class CppType implements CtLeaf
 
     /** The hash code is being cached, because it is kinda hard to calculate **/
     private int hash;
-
+    
     private CppType(String name, Kind kind)
     {
         this(name, kind, emptyList());
@@ -266,31 +272,6 @@ public class CppType implements CtLeaf
             flatTypes.addAll(upperLevel);
 
             upperLevel.forEach(t -> currentLevel.addAll(t.genericParams));
-
-            upperLevel.clear();
-            upperLevel.addAll(currentLevel);
-
-            currentLevel.clear();
-        }
-
-        return flatTypes;
-    }
-
-    public Set<CppType> getFlatVariantArguments()
-    {
-        if (!isVariant())
-            return emptySet();
-
-        final Set<CppType> flatTypes = new HashSet<>();
-
-        final List<CppType> upperLevel = new ArrayList<>(variantParams);
-        final List<CppType> currentLevel = new ArrayList<>();
-
-        while (!upperLevel.isEmpty())
-        {
-            flatTypes.addAll(upperLevel);
-
-            upperLevel.forEach(t -> currentLevel.addAll(t.variantParams));
 
             upperLevel.clear();
             upperLevel.addAll(currentLevel);

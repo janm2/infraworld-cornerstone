@@ -194,8 +194,22 @@ public class CppPrinter implements AutoCloseable
         if (field.isAnnotationsEnabled())
             decoratorWriter.writeAnnotations(this, field);
 
-        field.getType().accept(this).write(" ");
-        write(field.getName()).write(";");
+        CppType type =  field.getType();
+        
+        if( !field.isVariant() )
+        {
+	        type.accept(this).write(" ");
+	        write(field.getName()).write(";");
+        }
+        else
+        {
+        	type.accept(this);
+        	write("<");
+        	field.getSubTypes().forEach(key -> key.accept(this).write(commaSeparator));
+        	backspace(commaSeparator.length()).write(">");
+        	write(" ");
+        	write(field.getName()).write(";");
+        }
     }
 
     public void visit(CppType type)
@@ -211,12 +225,6 @@ public class CppPrinter implements AutoCloseable
         {
             write("<");
             type.getGenericParams().forEach(argument -> argument.accept(this).write(commaSeparator));
-            backspace(commaSeparator.length()).write(">");
-        }
-        else if(type.isVariant())
-        {
-            write("<");
-            type.getVariantParams().forEach(key -> key.accept(this).write(commaSeparator));
             backspace(commaSeparator.length()).write(">");
         }
 

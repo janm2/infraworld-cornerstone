@@ -15,18 +15,25 @@
  */
 package com.vizor.unreal.util;
 
+//import com.vizor.unreal.convert.ProtoProcessor;
 import com.vizor.unreal.tree.CppField;
 import com.vizor.unreal.tree.CppStruct;
 import com.vizor.unreal.tree.CppType;
 import com.vizor.unreal.util.Graph.GraphHasCyclesException;
+
+import static org.apache.logging.log4j.LogManager.getLogger;
 
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import org.apache.logging.log4j.Logger;
+
 public class MessageOrderResolver
 {
+	private static final Logger log = getLogger(MessageOrderResolver.class);
+	
     public int[] sortByInclusion(final List<CppStruct> structures)
     {
         final Set<CppType> cache = new HashSet<>(structures.size());
@@ -40,23 +47,43 @@ public class MessageOrderResolver
         final Graph<CppType> graph = new Graph<>(list);
         for (final CppStruct struct : structures)
         {
+        	log.debug("struct: " + struct.toString());
+        	
             for (final CppField field : struct.getFields())
             {
+            	
+            	log.debug("field: " + field.getType().toString());
+            	
                 final CppType fieldType = field.getType();
 
                 // If a field type has a reference to this struct type - add it as edge
-                if (cache.contains(fieldType))
+                if (cache.contains(fieldType)) 
+                {
+                	log.debug("addEdge fieldType: " + fieldType + " -> "+ struct.getType() );
                     graph.addEdge(fieldType, struct.getType());
+                }
 
                 // It the field's type is generic class - perform the same inclusion check for all it's arguments
                 // getFlatGenericArguments() returns an empty collection if it doesn't contain any generic arguments
                 fieldType.getFlatGenericArguments().stream()
                     .filter(cache::contains)
-                    .forEach(genericArg -> graph.addEdge(genericArg, struct.getType()));
+                    .forEach(
+                    		genericArg -> 
+                    		{ 
+                    			log.debug("addEdge genericArg: " + genericArg + " -> "+ struct.getType() );
+                    			graph.addEdge(genericArg, struct.getType());
+                    		}
+                    		);
 
-                fieldType.getFlatVariantArguments().stream()
+                field.getSubTypes().stream()
                         .filter(cache::contains)
-                        .forEach(variantArg -> graph.addEdge(variantArg, struct.getType()));
+                        .forEach(
+                        		variantArg -> 
+                        		{
+                        			log.debug("addEdge SubTypes: " + variantArg + " -> "+ struct.getType() );
+                        			graph.addEdge(variantArg, struct.getType());
+                        		}
+                        		);
             }
         }
 
