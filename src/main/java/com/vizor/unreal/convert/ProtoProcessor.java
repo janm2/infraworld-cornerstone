@@ -110,6 +110,7 @@ class ProtoProcessorArgs
 class ProtoProcessor implements Runnable
 {
     private static final Logger log = getLogger(ProtoProcessor.class);
+    private final Config config = Config.get();
 
     private final ProtoProcessorArgs args;
 
@@ -213,8 +214,11 @@ class ProtoProcessor implements Runnable
         ));
 
         // Generate RPC workers
-        final ClientWorkerGenerator clientWorkerGenerator = new ClientWorkerGenerator(services, ueProvider, args.parse);
-        final List<CppClass> workers = clientWorkerGenerator.genClientClass();
+        final WorkerGenerator workerGenerator = (config.isServer())? 
+        										new ServerWorkerGenerator(services, ueProvider, args.parse):
+        										new ClientWorkerGenerator(services, ueProvider, args.parse);
+        
+        final List<CppClass> workers = workerGenerator.genClass();
 
         // Generate RPC clients
         final List<CppClass> clients = new ArrayList<>(services.size());
@@ -225,9 +229,12 @@ class ProtoProcessor implements Runnable
             final ServiceElement service = services.get(i);
             final CppClass worker = workers.get(i);
 
-            final ClientGenerator cg = new ClientGenerator(service, ueProvider, worker.getType());
-
-            clients.add(cg.genClientClass());
+            // Get class code generator for server or client
+            final CodeGenerator cg = (config.isServer())? 
+            						  new ServerGenerator(service, ueProvider, worker.getType()): 
+            						  new ClientGenerator(service, ueProvider, worker.getType());
+            
+            clients.add(cg.genClass());
             dispatchers.addAll(cg.getDelegates());
         }
 
@@ -246,6 +253,8 @@ class ProtoProcessor implements Runnable
             new CppInclude(Header, "CoreMinimal.h"),
             new CppInclude(Header, "Conduit.h"),
             new CppInclude(Header, "GenUtils.h"),
+            (config.isServer())? 
+            new CppInclude(Header, "RpcServer.h") :
             new CppInclude(Header, "RpcClient.h")
         ));
 
@@ -287,14 +296,14 @@ class ProtoProcessor implements Runnable
         // code. mutable to allow
         final List<CppRecord> cppIncludes = new ArrayList<>(asList(
             new CppInclude(Cpp, generatedHeaderPath + ".h"),
-            new CppInclude(Cpp, "RpcClientWorker.h"),
+            new CppInclude(Cpp, "RpcWorker.h"),
             new CppInclude(Cpp, "WorkerUtils.h"),
 
             new CppInclude(Cpp, "GrpcIncludesBegin.h"),
 
             new CppInclude(Cpp, "grpc/support/log.h", true),
-            new CppInclude(Cpp, "grpc++/channel.h", true),
-            new CppInclude(Cpp, "ChannelProvider.h", false),
+            new CppInclude(Cpp, "grpcpp/channel.h", true),
+            new CppInclude(Cpp, "CredentialsProvider.h", false),
 
             new CppInclude(Cpp, generatedIncludeName + ".pb.hpp", false),
             new CppInclude(Cpp, generatedIncludeName + ".grpc.pb.hpp", false),
@@ -343,13 +352,21 @@ class ProtoProcessor implements Runnable
             p.newLine();
 
             cppIncludes.forEach(i -> i.accept(p));
+            
+            // add new line after includes to cpp
+            p.code();
             p.newLine();
+            p.header();
 
             // Write enums and structs
-            p.writeInlineComment("Enums:");
+            if(!ueEnums.isEmpty())
+            	p.writeInlineComment("Enums:");
+            
             ueEnums.forEach(e -> e.accept(p).newLine());
 
-            p.writeInlineComment("Structures:");
+            if(!unrealStructures.isEmpty())
+            	p.writeInlineComment("Structures:");
+            
             unrealStructures.forEach(s -> s.accept(p).newLine());
 
             p.writeInlineComment("Forward class definitions (for delegates)");
@@ -516,7 +533,7 @@ class ProtoProcessor implements Runnable
         {
             for(CppField unreadField : unrealStructure.getFields())
             {
-                if(unreadField.getType().isVariant())
+                if(unreadField.isVariant())
                 {
                     return true;
                 }

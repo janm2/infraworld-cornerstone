@@ -107,7 +107,7 @@ public class CppType implements CtLeaf
 
     private final String name;
     private final List<CppType> genericParams;
-    private final List<CppType> variantParams;
+    private final List<CppType> functionParams;
     private String variantName;
     private final Kind kind;
 
@@ -118,6 +118,7 @@ public class CppType implements CtLeaf
     private final CppType underType;
     private final Passage passage;
 
+    private final boolean isTypedef;
     private final boolean isConstant;
     private final boolean isVolatile;
 
@@ -133,11 +134,11 @@ public class CppType implements CtLeaf
 
     private CppType(String name, Kind kind, Collection<CppType> genericParams)
     {
-        this(name, kind, genericParams, null, Passage.ByValue, false, false);
+        this(name, kind, genericParams, null, Passage.ByValue, false, false, false);
     }
 
     private CppType(String name, Kind kind, Collection<CppType> genericParams, CppType underType, Passage passage,
-                    boolean isConstant, boolean isVolatile)
+                    boolean isConstant, boolean isVolatile, boolean isTypedef)
     {
         stream(Passage.values()).forEach(p -> {
             if (name.endsWith(p.name()))
@@ -149,13 +150,31 @@ public class CppType implements CtLeaf
         this.kind = kind;
 
         this.genericParams = genericParams.isEmpty() ? emptyList() : new ArrayList<>(genericParams);
-        this.variantParams = new ArrayList<>();
+        this.functionParams =  new ArrayList<>();
 
         this.underType = underType;
         this.passage = passage;
         this.isConstant = isConstant;
         this.isVolatile = isVolatile;
+        this.isTypedef = isTypedef;
+        
     }
+    
+    public CppType(CppType another)
+    {
+        this.name = another.name;
+        this.kind = another.kind;
+
+        this.genericParams = another.genericParams;
+        this.functionParams =  another.functionParams;
+
+        this.underType = another.underType;
+        this.passage = another.passage;
+        this.isConstant = another.isConstant;
+        this.isVolatile = another.isVolatile;
+        this.isTypedef = another.isTypedef;
+    }
+    
 
     public final boolean isArray()
     {
@@ -181,8 +200,11 @@ public class CppType implements CtLeaf
     {
         return !genericParams.isEmpty();
     }
-
-    public final boolean isVariant() { return !variantParams.isEmpty(); }
+    
+    public final boolean isFunction()
+    {
+    	return !functionParams.isEmpty();
+    }
 
     public final boolean isCompiledGeneric()
     {
@@ -213,7 +235,22 @@ public class CppType implements CtLeaf
     {
         return isVolatile;
     }
+    
+    public final boolean isTypedef()
+    {
+        return isTypedef;
+    }
 
+    public final List<CppType> getFunctionParams()
+    {
+    	return functionParams;
+    }
+    
+    public final void addFunctionParams(CppType params)
+    {
+    	functionParams.add(params);
+    }
+    
     public final void markAsNative(final Class<?> nativeClass)
     {
         if (isNull(nativeClass))
@@ -243,10 +280,6 @@ public class CppType implements CtLeaf
             return emptyList();
 
         return unmodifiableList(genericParams);
-    }
-
-    public List<CppType> getVariantParams() {
-        return variantParams;
     }
 
     public String getVariantName() {
@@ -295,9 +328,10 @@ public class CppType implements CtLeaf
     private CppType makeHybrid(final List<CppType> genericParams,
                                final Passage passage,
                                final boolean isConstant,
-                               final boolean isVolatile)
+                               final boolean isVolatile,
+                               final boolean isTypedef)
     {
-        final CppType cppType = new CppType(name, kind, genericParams, getMostUnderType(), passage, isConstant, isVolatile);
+        final CppType cppType = new CppType(name, kind, genericParams, getMostUnderType(), passage, isConstant, isVolatile, isTypedef);
         cppType.setNamespaces(getNamespaces());
 
         // If this is native type, mark compiled type as native too
@@ -321,7 +355,7 @@ public class CppType implements CtLeaf
                 throw new RuntimeException(toString() + " can not fit such arguments: " + genericParams.toString());
         }
 
-        return makeHybrid(genericParams, passage, isConstant, isVolatile);
+        return makeHybrid(genericParams, passage, isConstant, isVolatile, isTypedef);
     }
 
     public final CppType makeGeneric(final CppType... genericArguments)
@@ -331,52 +365,52 @@ public class CppType implements CtLeaf
 
     public final CppType makeRef(final boolean isConstant, final boolean isVolatile)
     {
-        return makeHybrid(genericParams, Passage.ByRef, isConstant, isVolatile);
+        return makeHybrid(genericParams, Passage.ByRef, isConstant, isVolatile, false);
     }
 
     public final CppType makeRef()
     {
-        return makeHybrid(genericParams, Passage.ByRef, isConstant, isVolatile);
+        return makeHybrid(genericParams, Passage.ByRef, isConstant, isVolatile, false);
     }
 
     public final CppType makePtr(final boolean isConstant, final boolean isVolatile)
     {
-        return makeHybrid(genericParams, Passage.ByPtr, isConstant, isVolatile);
+        return makeHybrid(genericParams, Passage.ByPtr, isConstant, isVolatile, false);
     }
 
     public final CppType makePtr()
     {
-        return makeHybrid(genericParams, Passage.ByPtr, isConstant, isVolatile);
+        return makeHybrid(genericParams, Passage.ByPtr, isConstant, isVolatile, isTypedef);
     }
 
     public final CppType makeValue(final boolean isConstant, final boolean isVolatile)
     {
-        return makeHybrid(genericParams, Passage.ByValue, isConstant, isVolatile);
+        return makeHybrid(genericParams, Passage.ByValue, isConstant, isVolatile, false);
     }
 
     public final CppType makeValue()
     {
-        return makeHybrid(genericParams, Passage.ByValue, isConstant, isVolatile);
+        return makeHybrid(genericParams, Passage.ByValue, isConstant, isVolatile, isTypedef);
     }
 
     public final CppType makeConstant(final Passage passage)
     {
-        return makeHybrid(genericParams, passage, true, isVolatile);
+        return makeHybrid(genericParams, passage, true, isVolatile, isTypedef);
     }
 
     public final CppType makeVolatile(final Passage passage)
     {
-        return makeHybrid(genericParams, passage, isConstant, true);
+        return makeHybrid(genericParams, passage, isConstant, true, isTypedef);
     }
 
     public final CppType makeConstant()
     {
-        return makeHybrid(genericParams, passage, true, isVolatile);
+        return makeHybrid(genericParams, passage, true, isVolatile, isTypedef);
     }
 
     public final CppType makeVolatile()
     {
-        return makeHybrid(genericParams, passage, isConstant, true);
+        return makeHybrid(genericParams, passage, isConstant, true, isTypedef);
     }
 
     public final CppType getUnderType()
@@ -411,6 +445,11 @@ public class CppType implements CtLeaf
     public static CppType wildcardGeneric(final String name, final Kind kind, final int numParams)
     {
         return new CppType(name, kind, nCopies(numParams, wildcard));
+    }
+    
+    public static CppType wildcardGenericTypedef(final String name, final Kind kind, final int numParams)
+    {
+        return new CppType(name, kind, nCopies(numParams, wildcard), null, Passage.ByValue, false, false, true);
     }
 
     public static CppType plain(String name, Kind kind)
@@ -455,6 +494,7 @@ public class CppType implements CtLeaf
 
             hashes.add(isConstant);
             hashes.add(isVolatile);
+            hashes.add(isTypedef);
             hashes.add(kind);
             hashes.add(name);
 
@@ -465,6 +505,9 @@ public class CppType implements CtLeaf
 
             if (isGeneric())
                 hashes.addAll(getFlatGenericArguments());
+            
+            if (isFunction())
+                hashes.addAll(getFunctionParams());
 
             // AbstractList's
             hash = hashes.hashCode();
@@ -485,12 +528,14 @@ public class CppType implements CtLeaf
 
             return  (isConstant == otherType.isConstant) &&
                     (isVolatile == otherType.isVolatile) &&
+                    (isTypedef == otherType.isTypedef) &&
                     Objects.equals(kind, otherType.kind) &&
                     Objects.equals(name, otherType.name) &&
                     Objects.equals(namespaces, otherType.namespaces) &&
                     Objects.equals(nativeClass, otherType.nativeClass) &&
                     Objects.equals(passage, otherType.passage) &&
-                    (!isGeneric() || Objects.equals(getFlatGenericArguments(), otherType.getFlatGenericArguments()));
+                    (!isGeneric() || Objects.equals(getFlatGenericArguments(), otherType.getFlatGenericArguments())) &&
+                    (!isFunction() || Objects.equals(getFunctionParams(), otherType.getFunctionParams()));
         }
 
         return false;

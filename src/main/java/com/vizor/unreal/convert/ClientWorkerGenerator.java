@@ -29,14 +29,14 @@ import com.vizor.unreal.tree.CppType;
 import java.util.ArrayList;
 import java.util.List;
 
-import static com.vizor.unreal.convert.ClientGenerator.conduitName;
-import static com.vizor.unreal.convert.ClientGenerator.conduitType;
-import static com.vizor.unreal.convert.ClientGenerator.contextArg;
-import static com.vizor.unreal.convert.ClientGenerator.initFunctionName;
-import static com.vizor.unreal.convert.ClientGenerator.reqWithCtx;
-import static com.vizor.unreal.convert.ClientGenerator.rspWithSts;
-import static com.vizor.unreal.convert.ClientGenerator.supressSuperString;
-import static com.vizor.unreal.convert.ClientGenerator.updateFunctionName;
+import static com.vizor.unreal.convert.CodeGenerator.conduitName;
+import static com.vizor.unreal.convert.CodeGenerator.conduitType;
+import static com.vizor.unreal.convert.CodeGenerator.contextArg;
+import static com.vizor.unreal.convert.CodeGenerator.initFunctionName;
+import static com.vizor.unreal.convert.CodeGenerator.reqWithCtx;
+import static com.vizor.unreal.convert.CodeGenerator.rspWithSts;
+import static com.vizor.unreal.convert.CodeGenerator.supressSuperString;
+import static com.vizor.unreal.convert.CodeGenerator.updateFunctionName;
 import static com.vizor.unreal.tree.CppRecord.Residence.Cpp;
 import static com.vizor.unreal.tree.CppType.Kind.Class;
 import static com.vizor.unreal.tree.CppType.Kind.Struct;
@@ -48,32 +48,17 @@ import static java.text.MessageFormat.format;
 import static java.util.Arrays.asList;
 import static java.util.stream.Collectors.toList;
 
-class ClientWorkerGenerator
+class ClientWorkerGenerator extends WorkerGenerator
 {
     private static final CppType genericParentType = wildcardGeneric("TStubbedRpcWorker", Class, 1);
-    private static final CppType wildcardUniquePtr = wildcardGeneric("unique_ptr", Struct, 1);
-
-    static
-    {
-        wildcardUniquePtr.setNamespaces(new CppNamespace("std"));
-    }
-
-    private final List<ServiceElement> services;
-    private final TypesProvider provider;
-    private final ProtoFileElement parse;
-    private final CppType voidType;
-    private final CppType boolType;
 
     ClientWorkerGenerator(List<ServiceElement> services, TypesProvider provider, ProtoFileElement parse)
     {
-        this.services = services;
-        this.provider = provider;
-        this.voidType = provider.getNative(void.class);
-        this.boolType = provider.getNative(boolean.class);
-        this.parse = parse;
+    	super(services,provider, parse);
     }
 
-    List<CppClass> genClientClass()
+    @Override
+    public List<CppClass> genClass()
     {
         return services.stream().map(this::genSingle).collect(toList());
     }
@@ -82,7 +67,7 @@ class ClientWorkerGenerator
     {
         final CppType classType = plain(service.name() + "RpcClientWorker", Class);
 
-        final List<CppField> cppFields = extractConduits(service);
+        final List<CppField> cppFields = extractConduits(service, reqWithCtx, rspWithSts);
         final List<CppField> fields = new ArrayList<>(cppFields);
 
 
@@ -134,7 +119,7 @@ class ClientWorkerGenerator
 
         final StringBuilder sb = new StringBuilder(supressSuperString(initFunctionName));
 
-        sb.append("std::shared_ptr<grpc::Channel> Channel = channel::CreateChannel(this);")
+        sb.append("std::shared_ptr<grpc::Channel> Channel = connection::CreateChannel(this);")
                 .append(lineSeparator());
 
         sb.append("if (!Channel.get())").append(lineSeparator());
@@ -161,8 +146,6 @@ class ClientWorkerGenerator
     private CppFunction createUpdate(final ServiceElement service, final List<CppField> fields)
     {
         final CppFunction update = new CppFunction(updateFunctionName, voidType);
-        update.enableAnnotations(false);
-        update.isOverride = true;
 
         // @see https://stackoverflow.com/questions/1187093/can-i-escape-braces-in-a-java-messageformat
         final String dequeuePattern = join(lineSeparator(), asList(
@@ -193,6 +176,8 @@ class ClientWorkerGenerator
         }
 
         update.setBody(sb.toString());
+        update.isOverride = true;
+        update.enableAnnotations(false);
         return update;
     }
 
@@ -209,24 +194,6 @@ class ClientWorkerGenerator
 
         stub.enableAnnotations(false);
         return stub;
-    }
-
-    private List<CppField> extractConduits(final ServiceElement service)
-    {
-        return service.rpcs().stream()
-            .map(rpc -> {
-                // Extract conduits (bidirectional queues)
-                final CppType compiledGenericConduit = conduitType.makeGeneric(
-                    reqWithCtx.makeGeneric(provider.get(rpc.requestType())),
-                    rspWithSts.makeGeneric(provider.get(rpc.responseType()))
-                );
-
-                final CppField conduit = new CppField(compiledGenericConduit.makePtr(), rpc.name() + conduitName);
-                conduit.enableAnnotations(false);
-
-                return conduit;
-            })
-            .collect(toList());
     }
 
     private List<CppFunction> extractFunctions(final ServiceElement service)
@@ -249,10 +216,4 @@ class ClientWorkerGenerator
             })
             .collect(toList());
     }
-
-    private String getPackageNamespaceString()
-    {
-        return parse.packageName() != null ? parse.packageName() + "::" : "";
-    }
-
 }

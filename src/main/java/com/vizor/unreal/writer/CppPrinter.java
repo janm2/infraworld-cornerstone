@@ -15,6 +15,7 @@
  */
 package com.vizor.unreal.writer;
 
+import com.vizor.unreal.config.Config;
 import com.vizor.unreal.config.DestinationConfig;
 import com.vizor.unreal.tree.CppArgument;
 import com.vizor.unreal.tree.CppClass;
@@ -79,6 +80,8 @@ public class CppPrinter implements AutoCloseable
 
     private final DestinationConfig absPathToFile;
     private final DummyDecoratorWriter decoratorWriter;
+    
+    private final Config config = Config.get();
 
     private final HeaderType headerType;
 
@@ -164,13 +167,13 @@ public class CppPrinter implements AutoCloseable
         return this;
     }
 
-    private CppPrinter header()
+    public CppPrinter header()
     {
         current = header;
         return this;
     }
 
-    private CppPrinter code()
+    public CppPrinter code()
     {
         current = codeFile;
         return this;
@@ -214,6 +217,11 @@ public class CppPrinter implements AutoCloseable
 
     public void visit(CppType type)
     {
+    	if(type.isTypedef())
+    	{
+    		 write("typedef ");
+    	}
+    	
         // Write namespaces (if have some)
         type.getNamespaces().forEach(ns -> write(ns.getName()).write("::"));
 
@@ -226,6 +234,14 @@ public class CppPrinter implements AutoCloseable
             write("<");
             type.getGenericParams().forEach(argument -> argument.accept(this).write(commaSeparator));
             backspace(commaSeparator.length()).write(">");
+        }
+        
+        // if is function signature
+        if(type.isFunction())
+        {
+        	 write("(");
+        	 type.getFunctionParams().forEach(argument -> argument.accept(this).write(commaSeparator));
+        	 backspace(commaSeparator.length()).write(")");
         }
 
         write(type.getPassage().getSymbols());
@@ -293,7 +309,14 @@ public class CppPrinter implements AutoCloseable
         if (!struct.getFields().isEmpty())
         {
             newLine().decTab().writeLine("public:").incTab();
-            writeInlineComment("Conduits and GRPC stub");
+            if(config.isServer())
+            {
+            	writeInlineComment("GRPC Server");
+            }
+            else
+            {
+            	writeInlineComment("Conduits and GRPC stub");
+            }
             struct.getFields().forEach(f -> f.accept(this).newLine().newLine());
         }
     }

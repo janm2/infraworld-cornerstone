@@ -45,109 +45,50 @@ import static java.text.MessageFormat.format;
 import static java.util.Arrays.asList;
 import static java.util.stream.Collectors.toList;
 
-class ClientGenerator
+public class ClientGenerator extends CodeGenerator
 {
-    private static final String companyName = Config.get().getCompanyName();
-
-    // URpcDispatcher is a parent type for all dispatchers
-    private static final CppType parentType = plain("URpcClient", Class);
-
-    // Frequently used string literals:
-    private static final String rpcRequestsCategory = companyName + "|RPC Requests|";
-    private static final String rpcResponsesCategory = companyName + "|RPC Responses|";
-    private static final String dispatcherPrefix = "RpcClient";
-    private static final String eventPrefix = "Event";
-    private static final String eventTypePrefix = "F" + eventPrefix;
-
-    static final String conduitName = "Conduit";
-    static final String updateFunctionName = "HierarchicalUpdate";
-    static final String initFunctionName = "HierarchicalInit";
-
-    // Special structures, wrapping requests and responses:
-    static final CppType reqWithCtx = wildcardGeneric("TRequestWithContext", Struct, 1);
-    static final CppType rspWithSts = wildcardGeneric("TResponseWithStatus", Struct, 1);
-    static final CppType conduitType = wildcardGeneric("TConduit", Struct, 2);
-    static final CppArgument contextArg = new CppArgument(plain("FGrpcClientContext", Struct).makeRef(), "Context");
-
-    private final ServiceElement service;
-    private final CppType boolType;
-    private final CppType voidType;
 
     // Bulk cache
-    private final CppType clientType;
-    private final CppType dispatcherType;
-    private final Map<String, Tuple<CppType, CppType>> requestsResponses;
-
-    private final List<CppField> conduits;
     private final List<Tuple<CppDelegate, CppField>> delegates;
 
-    ClientGenerator(final ServiceElement service, final TypesProvider provider, final CppType clientType)
+    ClientGenerator(final ServiceElement service, final TypesProvider provider, final CppType workerType) 
     {
-        this.service = service;
-
-        boolType = provider.getNative(boolean.class);
-        voidType = provider.getNative(void.class);
-
-        this.clientType = clientType;
-        this.dispatcherType = plain("U" + service.name() + dispatcherPrefix, CppType.Kind.Class);
-
-        final List<RpcElement> rpcs = service.rpcs();
-
-        requestsResponses = new HashMap<>(rpcs.size());
-        rpcs.forEach(r -> requestsResponses.put(r.name(),
-            Tuple.of(
-                provider.get(r.requestType()),
-                provider.get(r.responseType())
-            )
-        ));
-
-        conduits = genConduits();
+    	super(service, provider, workerType);
+    	
         delegates = genDelegates();
+        conduits = genConduits(reqWithCtx, rspWithSts);
     }
 
-    CppClass genClientClass()
+    @Override
+    public String getClassName()
+    {
+    	return "RpcClient";
+    }
+    
+    @Override
+    public CppClass genClass()
     {
         final List<CppFunction> methods = new ArrayList<>();
         methods.add(genInitialize());
         methods.add(genUpdate());
         methods.addAll(genProcedures());
 
-        final List<CppField> fields = new ArrayList<>(genConduits());
+        final List<CppField> fields = new ArrayList<>(conduits);
         fields.addAll(delegates.stream().map(Tuple::second).collect(toList()));
 
         return new CppClass(dispatcherType, parentType, fields, methods);
     }
 
-    final List<CppDelegate> getDelegates()
+    @Override
+    public List<CppDelegate> getDelegates()
     {
         return delegates.stream().map(Tuple::first).collect(toList());
-    }
-
-    static String supressSuperString(final String functionName)
-    {
-        return "// No need to call Super::" + functionName + "(), it isn't required by design" + lineSeparator();
-    }
-
-    private List<CppField> genConduits()
-    {
-        return requestsResponses.entrySet().stream()
-            .map(e -> {
-                final CppType compiled = e.getValue().reduce((req, rsp) -> conduitType.makeGeneric(
-                    reqWithCtx.makeGeneric(req),
-                    rspWithSts.makeGeneric(rsp))
-                );
-                final CppField f = new CppField(compiled, e.getKey() + conduitName);
-                f.enableAnnotations(false);
-
-                return f;
-            })
-            .collect(toList());
     }
 
     private List<Tuple<CppDelegate, CppField>> genDelegates()
     {
         // two named arguments
-        final CppArgument dispatcherArg = new CppArgument(dispatcherType.makePtr(), dispatcherPrefix);
+        final CppArgument dispatcherArg = new CppArgument(dispatcherType.makePtr(), getClassName());
         final CppArgument statusArg = new CppArgument(plain("FGrpcStatus", Struct), "Status");
 
         return requestsResponses.entrySet().stream()
@@ -171,7 +112,7 @@ class ClientGenerator
     private CppFunction genInitialize()
     {
         final StringBuilder sb = new StringBuilder(supressSuperString(initFunctionName));
-        final String cName = clientType.getName();
+        final String cName = workerType.getName();
 
         final String workerVariableName = "Worker";
 
@@ -187,7 +128,7 @@ class ClientGenerator
             sb.append(lineSeparator()).append(lineSeparator());
         });
 
-        sb.append("InnerWorker = TUniquePtr<RpcClientWorker>(").append(workerVariableName).append(");");
+        sb.append("InnerWorker = TUniquePtr<RpcWorker>(").append(workerVariableName).append(");");
         sb.append(lineSeparator()).append(lineSeparator());
 
         final CppFunction init = new CppFunction(initFunctionName, voidType);
@@ -241,7 +182,7 @@ class ClientGenerator
     private List<CppFunction> genProcedures()
     {
         final String pattern = join(lineSeparator(), asList(
-            "if (!CanSendRequests())",
+            "if (!HasStarted())",
             "    return false;",
             "",
             "{0}Conduit.Enqueue(TRequestWithContext$New(Request, Context));",

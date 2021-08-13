@@ -107,6 +107,16 @@ public class Main
 
         log.info("Company name: {}", config.getCompanyName());
         log.info("Wrappers path: %INCLUDE_DIR%/{}", config.getWrappersPath());
+        
+        if(config.isServer())
+        {
+        	 log.info("Generating Server");
+        }
+        else
+        {
+        	 log.info("Generating Client");
+        }
+        
 
         launchSingle(srcPath, dstPath, converter);
     }

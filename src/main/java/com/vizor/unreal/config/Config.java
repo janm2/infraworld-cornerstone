@@ -95,6 +95,9 @@ public final class Config
 
     @ConfigField
     private String logLevel;
+    
+    @ConfigField
+    private boolean isServer;
 
     @ConfigField
     private boolean noFork;
@@ -188,6 +191,16 @@ public final class Config
     public void setLogLevel(String logLevel)
     {
         this.logLevel = logLevel;
+    }
+    
+    public void setIsServer(boolean isServer)
+    {
+    	this.isServer = isServer;
+    }
+    
+    public boolean isServer()
+    {
+    	return isServer;
     }
 
     public boolean isNoFork()
