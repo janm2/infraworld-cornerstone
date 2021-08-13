@@ -27,7 +27,7 @@ To build the converter executable and run it's tests, just run:
 Then you can find built jar as
 `target/cornerstone.jar`. Since it is compiled as an executable jar, you may run it by just using:
 
->`java -jar target/cornerstone.jar`
+>`java -jar target/infraworld-cornerstone.jar`
 
 Usage
 =====
@@ -58,6 +58,8 @@ the precompiled header.
 * `company_name` Company name will be used to declare category, where RPC methods will be placed.
 * `log_level` Override log level if you want to. May be ignored, then log4j2.xml will be used.
 * `no_fork` Set to true to force the converter to work in the single thread. False by default.
+* `include_path` Path to source that replaces `src_path` on build so there is no need to mirror path for .proto
+* `is_server` set to true to generate server instead of client
 
 Additional options (only available from CLI):
 * `--help` Prints help message and lists all available commands
