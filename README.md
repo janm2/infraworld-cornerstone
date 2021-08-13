@@ -25,7 +25,7 @@ To build the converter executable and run it's tests, just run:
 >`mvn package`
 
 Then you can find built jar as
-`target/cornerstone.jar`. Since it is compiled as an executable jar, you may run it by just using:
+`target/infraworld-cornerstone.jar`. Since it is compiled as an executable jar, you may run it by just using:
 
 >`java -jar target/infraworld-cornerstone.jar`
 
