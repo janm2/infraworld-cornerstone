@@ -8,6 +8,7 @@ import static com.vizor.unreal.tree.CppType.Kind.Struct;
 import static java.lang.System.lineSeparator;
 import static java.util.stream.Collectors.toList;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -62,7 +63,6 @@ public abstract class CodeGenerator
 	protected final CppType boolType;
 	protected final CppType voidType;
 	
-	protected final Map<String, Tuple<CppType, CppType>> requestsResponses;
 	protected List<CppField> conduits;
 	
 	protected final ServiceElement service;
@@ -79,16 +79,6 @@ public abstract class CodeGenerator
 		 
 	     boolType = provider.getNative(boolean.class);
 	     voidType = provider.getNative(void.class);
-	     
-	     final List<RpcElement> rpcs = service.rpcs();
-	     
-	     requestsResponses = new HashMap<>(rpcs.size());
-	        rpcs.forEach(r -> requestsResponses.put(r.name(),
-	            Tuple.of(
-	                provider.get(r.requestType()),
-	                provider.get(r.responseType())
-	            )
-	        ));
     }
 	
 	public abstract CppClass genClass();
@@ -104,18 +94,27 @@ public abstract class CodeGenerator
     
     public List<CppField> genConduits(CppType reqType, CppType resType)
     {
-        return requestsResponses.entrySet().stream()
-            .map(e -> {
-                final CppType compiled = e.getValue().reduce((req, rsp) -> conduitType.makeGeneric(
-                		reqType.makeGeneric(req),
-                		resType.makeGeneric(rsp))
-                );
-                final CppField f = new CppField(compiled, e.getKey() + conduitName);
-                f.enableAnnotations(false);
-
-                return f;
-            })
-            .collect(toList());
+    	List<CppField> conduits = new ArrayList<>();
+    	
+    	final List<RpcElement> rpcs = service.rpcs();
+    	 
+    	rpcs.forEach( r -> {
+    		
+    		final CppType req = provider.get(r.requestType());
+    		final CppType rsp = provider.get(r.responseType());
+    		
+    		final CppType compiled = conduitType.makeGeneric(
+            		reqType.makeGeneric(req),
+            		resType.makeGeneric(rsp)
+            		);
+    		
+            final CppField f = new CppField(compiled, r.name() + conduitName);
+            f.enableAnnotations(false);
+            
+            conduits.add(f);
+    	});
+        
+        return conduits;
     }
     
 }

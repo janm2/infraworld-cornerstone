@@ -91,22 +91,26 @@ public class ClientGenerator extends CodeGenerator
         final CppArgument dispatcherArg = new CppArgument(dispatcherType.makePtr(), getClassName());
         final CppArgument statusArg = new CppArgument(plain("FGrpcStatus", Struct), "Status");
 
-        return requestsResponses.entrySet().stream()
-            .map(e -> {
-                final CppArgument responseArg = e.getValue().reduce(($, rsp) -> new CppArgument(rsp.makeRef(), "Response"));
-                final CppType eventType = plain(eventTypePrefix + e.getKey() + service.name(), Struct);
-
-                return Tuple.of(
-                    new CppDelegate(eventType, asList(dispatcherArg, responseArg, statusArg)),
-                    new CppField(eventType, eventPrefix + e.getKey())
-                );
-            })
-            .peek(t -> {
-                // should add an UE-specific annotations to these events
-                t.second().addAnnotation(BlueprintAssignable);
-                t.second().addAnnotation(Category, rpcResponsesCategory + service.name());
-            })
-            .collect(toList());
+        
+        List<Tuple<CppDelegate, CppField>> delegates = new ArrayList<>();
+    	
+    	final List<RpcElement> rpcs = service.rpcs();
+    	 
+    	rpcs.forEach( r -> {
+    		final CppType rsp = provider.get(r.responseType());
+    		
+    		final CppArgument responseArg = new CppArgument(rsp.makeRef(), "Response");
+    		final CppType eventType = plain(eventTypePrefix + r.name() + service.name(), Struct);
+    		
+    		
+    		delegates.add( Tuple.of(
+				    				new CppDelegate(eventType, asList(dispatcherArg, responseArg, statusArg)),
+				    				new CppField(eventType, eventPrefix + r.name())
+		    					   )
+    					 );
+    	});
+ 
+        return delegates;
     }
 
     private CppFunction genInitialize()
@@ -191,17 +195,25 @@ public class ClientGenerator extends CodeGenerator
 
         final CppArgument contextArg = new CppArgument(plain("FGrpcClientContext", Struct).makeRef(), "Context");
 
-        return requestsResponses.entrySet().stream()
-            .map(e -> {
-                final CppArgument requestArg = e.getValue().reduce((r, $) -> new CppArgument(r, "Request"));
-                final CppFunction method = new CppFunction(e.getKey(), boolType, asList(requestArg, contextArg));
+        List<CppFunction> methods = new ArrayList<>();
+    	
+    	final List<RpcElement> rpcs = service.rpcs();
+        
+    	
+    	rpcs.forEach( r -> {
+            	
+        		final CppType req = provider.get(r.requestType());
+            	
+                final CppArgument requestArg = new CppArgument(req, "Request");
+                final CppFunction method = new CppFunction(r.name(), boolType, asList(requestArg, contextArg));
 
-                method.setBody(format(pattern, e.getKey()));
+                method.setBody(format(pattern, r.name()));
                 method.addAnnotation(BlueprintCallable);
                 method.addAnnotation(Category, rpcRequestsCategory + service.name());
 
-                return method;
-            })
-            .collect(toList());
+                methods.add(method);
+            });
+        
+        return methods;
     }
 }

@@ -118,7 +118,12 @@ public class ServerWorkerGenerator extends WorkerGenerator
 
         final StringBuilder sb = new StringBuilder(supressSuperString(initFunctionName));
 
-        sb.append("connection::CreateServer<VSAR_control::ControlApi::AsyncService>(this, Server, Que, &Service);")
+        final String createProducerPattern = "connection::CreateServer<{0}>(this, Server, Que, &Service);";
+        
+        sb.append(format(
+        		createProducerPattern,
+        		getServiceName(service)
+        		))
                 .append(lineSeparator()).append(lineSeparator());
 
         final String acquireProducerPattern = "{0}->AcquireRequestsProducer();";
