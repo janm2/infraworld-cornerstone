@@ -49,8 +49,8 @@ public final class UnrealTypesProvider extends TypesProvider
         register("void", plain("void", Primitive), void.class);
 
         registerAlias("int", "int32");
-        registerAlias("uint32", "int32");
-        registerAlias("uint64", "int64");
+        registerAlias("uint32", "int64"); // using int64 to avoid cast crop
+        registerAlias("uint64", "int64"); // nothing can be done here, just use int64
 
         register("string", plain("FString", Struct), String.class);
         register("map", wildcardGeneric("TMap", Struct, 2), Map.class);
