@@ -13,7 +13,8 @@ import static com.vizor.unreal.convert.CodeGenerator.callDataType;
 import static com.vizor.unreal.convert.CodeGenerator.initFunctionName;
 import static com.vizor.unreal.convert.CodeGenerator.supressSuperString;
 import static com.vizor.unreal.convert.CodeGenerator.updateFunctionName;
-import static com.vizor.unreal.convert.CodeGenerator.shutdownName;
+import static com.vizor.unreal.convert.CodeGenerator.shutdownFunctionName;
+import static com.vizor.unreal.convert.CodeGenerator.StopCurrentFunctionName;
 import static com.vizor.unreal.convert.CodeGenerator.reqWithTag;
 import static com.vizor.unreal.convert.CodeGenerator.rspWithTag;
 import static java.lang.String.join;
@@ -70,6 +71,7 @@ public class ServerWorkerGenerator extends WorkerGenerator
 	    
 	    methods.add(createServerInitializer(service, fields));
 	    methods.add(createUpdate(service, fields));
+	    methods.add(createStopCurrent(service, fields));
 	    methods.add(createShutdown(service, fields));
 		
 		final CppType classType = plain(service.name() + "RpcSeverWorker", Class);
@@ -257,10 +259,35 @@ public class ServerWorkerGenerator extends WorkerGenerator
         return update;
     }
 	
+	private CppFunction createStopCurrent(final ServiceElement service, final List<CppField> fields)
+	{
+		final CppFunction stopCurrent = new CppFunction(StopCurrentFunctionName, voidType);
+		final StringBuilder sb = new StringBuilder(supressSuperString(StopCurrentFunctionName));
+		
+		final String WaitPattern = join(lineSeparator(), asList(
+        		"CancelAll({0});"
+         ));
+		
+		 for (int i = 0; i < fields.size(); i++)
+        {
+            final RpcElement rpc = service.rpcs().get(i);
+            
+            sb.append(format(
+            	WaitPattern,
+            	rpc.name() + dataName
+            )).append(lineSeparator()).append(lineSeparator());
+        }
+		
+		stopCurrent.setBody(sb.toString());
+		stopCurrent.isOverride = true;
+		stopCurrent.enableAnnotations(false);
+		return stopCurrent;
+	}
+	
 	private CppFunction createShutdown(final ServiceElement service, final List<CppField> fields)
 	{
-		final CppFunction update = new CppFunction(shutdownName, voidType);
-		final StringBuilder sb = new StringBuilder(supressSuperString(shutdownName));
+		final CppFunction update = new CppFunction(shutdownFunctionName, voidType);
+		final StringBuilder sb = new StringBuilder(supressSuperString(shutdownFunctionName));
 		
 		sb.append("Server->Shutdown();").append(lineSeparator());
 		sb.append("Que->Shutdown();").append(lineSeparator());

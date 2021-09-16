@@ -45,7 +45,8 @@ public abstract class CodeGenerator
     public static final String dataName = "Data";
     public static final String updateFunctionName = "HierarchicalUpdate";
     public static final String initFunctionName = "HierarchicalInit";
-    public static final String shutdownName = "HierarchicalShutdown";
+    public static final String shutdownFunctionName = "HierarchicalShutdown";
+    public static final String StopCurrentFunctionName = "HierarchicalStopCurrent";
 	
     public static final CppArgument contextArg = new CppArgument(plain("FGrpcClientContext", Struct).makeRef(), "Context");
     
