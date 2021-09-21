@@ -251,11 +251,11 @@ class ProtoProcessor implements Runnable
         final List<CppInclude> headerIncludes = new ArrayList<>(asList(
             // header
             new CppInclude(Header, "CoreMinimal.h"),
-            new CppInclude(Header, "Conduit.h"),
-            new CppInclude(Header, "GenUtils.h"),
+            new CppInclude(Header, "Worker/Conduit.h"),
+            new CppInclude(Header, "Utility/GenUtils.h"),
             (config.isServer())? 
-            new CppInclude(Header, "RpcServer.h") :
-            new CppInclude(Header, "RpcClient.h")
+            new CppInclude(Header, "Server/RpcServer.h") :
+            new CppInclude(Header, "Client/RpcClient.h")
         ));
 
         if(isHaveVariantField(unrealStructures))
@@ -296,31 +296,31 @@ class ProtoProcessor implements Runnable
         // code. mutable to allow
         final List<CppRecord> cppIncludes = new ArrayList<>(asList(
             new CppInclude(Cpp, generatedHeaderPath + ".h"),
-            new CppInclude(Cpp, "RpcWorker.h"),
-            new CppInclude(Cpp, "WorkerUtils.h"),
+            new CppInclude(Cpp, "Worker/RpcWorker.h"),
+            new CppInclude(Cpp, (config.isServer())?  "Server/ServiceRpcWorker.h" : "Client/StubbedRpcWorker.h"),
 
-            new CppInclude(Cpp, "GrpcIncludesBegin.h"),
+            new CppInclude(Cpp, "Utility/GrpcIncludesBegin.h"),
 
             new CppInclude(Cpp, "grpc/support/log.h", true),
             new CppInclude(Cpp, "grpcpp/channel.h", true),
-            new CppInclude(Cpp, "CredentialsProvider.h", false),
+            new CppInclude(Cpp, "Credentials/CredentialsProvider.h", false),
 
             new CppInclude(Cpp, generatedIncludeName + ".pb.hpp", false),
             new CppInclude(Cpp, generatedIncludeName + ".grpc.pb.hpp", false),
 
-            new CppInclude(Cpp, "GrpcIncludesEnd.h"),
+            new CppInclude(Cpp, "Utility/GrpcIncludesEnd.h"),
             new CppInclude(Cpp, castIncludeName)
         ));
         
         final List<CppRecord> castsIncludes = new ArrayList<>(asList(
-            new CppInclude(Header, "CastUtils.h"),
+            new CppInclude(Header, "Utility/CastUtils.h"),
 
-            new CppInclude(Header, "GrpcIncludesBegin.h"),
+            new CppInclude(Header, "Utility/GrpcIncludesBegin.h"),
 
             new CppInclude(Header, generatedIncludeNamePublic + ".pb.h", false),
             new CppInclude(Header, generatedIncludeNamePublic + ".grpc.pb.h", false),
 
-            new CppInclude(Header, "GrpcIncludesEnd.h"),
+            new CppInclude(Header, "Utility/GrpcIncludesEnd.h"),
 
             new CppInclude(Header, args.className + ".h")
         ));
