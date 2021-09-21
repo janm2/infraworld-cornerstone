@@ -278,6 +278,8 @@ public class ServerWorkerGenerator extends WorkerGenerator
             )).append(lineSeparator()).append(lineSeparator());
         }
 		
+		sb.append("BlockNew();").append(lineSeparator());
+		 
 		stopCurrent.setBody(sb.toString());
 		stopCurrent.isOverride = true;
 		stopCurrent.enableAnnotations(false);
@@ -288,10 +290,6 @@ public class ServerWorkerGenerator extends WorkerGenerator
 	{
 		final CppFunction update = new CppFunction(shutdownFunctionName, voidType);
 		final StringBuilder sb = new StringBuilder(supressSuperString(shutdownFunctionName));
-		
-		sb.append("Server->Shutdown();").append(lineSeparator());
-		sb.append("Que->Shutdown();").append(lineSeparator());
-		sb.append("DrainQue();").append(lineSeparator()).append(lineSeparator());
 		
 		final String emptyPattern = join(lineSeparator(), asList(
         		"for (int i = 0; i < {0}.Num(); i++)",
