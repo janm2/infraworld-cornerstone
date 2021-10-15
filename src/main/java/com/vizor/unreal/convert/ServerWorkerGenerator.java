@@ -120,7 +120,14 @@ public class ServerWorkerGenerator extends WorkerGenerator
 
         final StringBuilder sb = new StringBuilder(supressSuperString(initFunctionName));
 
-        final String createProducerPattern = "connection::CreateServer<{0}>(this, Server, Que, &Service);";
+        final String createProducerPattern =  join(lineSeparator(), asList(
+        			"connection::CreateServer<{0}>(this, Server, Que, &Service);",
+        			"",
+        			"if(!Server)",
+        			"'{'",
+        			"	return false;",
+        			"'}'"
+        		));
         
         sb.append(format(
         		createProducerPattern,
