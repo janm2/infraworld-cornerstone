@@ -208,7 +208,7 @@ public class CppPrinter implements AutoCloseable
         {
         	type.accept(this);
         	write("<");
-        	field.getSubTypes().forEach(key -> key.accept(this).write(commaSeparator));
+        	field.getSubTypes().forEach(key -> key.type.accept(this).write(commaSeparator));
         	backspace(commaSeparator.length()).write(">");
         	write(" ");
         	write(field.getName()).write(";");

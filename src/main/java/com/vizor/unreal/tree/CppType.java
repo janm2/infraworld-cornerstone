@@ -282,14 +282,6 @@ public class CppType implements CtLeaf
         return unmodifiableList(genericParams);
     }
 
-    public String getVariantName() {
-        return variantName;
-    }
-
-    public void setVariantName(String variantName) {
-        this.variantName = variantName;
-    }
-
     public Set<CppType> getFlatGenericArguments()
     {
         if (!isGeneric())

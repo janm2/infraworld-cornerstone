@@ -76,12 +76,14 @@ public class MessageOrderResolver
                     		);
 
                 field.getSubTypes().stream()
-                        .filter(cache::contains)
                         .forEach(
                         		variantArg -> 
                         		{
-                        			log.debug("addEdge SubTypes: " + variantArg + " -> "+ struct.getType() );
-                        			graph.addEdge(variantArg, struct.getType());
+                        			 if (cache.contains(variantArg.type)) 
+                                     {
+                        				 log.debug("addEdge SubTypes: " + variantArg.type + " -> "+ struct.getType() );
+                        				 graph.addEdge(variantArg.type, struct.getType());
+                                     }
                         		}
                         		);
             }

@@ -21,6 +21,7 @@ import com.vizor.unreal.tree.CppFunction;
 import com.vizor.unreal.tree.CppNamespace;
 import com.vizor.unreal.tree.CppStruct;
 import com.vizor.unreal.tree.CppType;
+import com.vizor.unreal.tree.OneofItem;
 import com.vizor.unreal.util.Tuple;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -172,12 +173,12 @@ class CastGenerator
             StringBuilder switchBody = new StringBuilder(String.format("switch (%s.%s_case())",inputItemName,inField.getName()));
             switchBody.append(lineSeparator()).append('{').append(lineSeparator());
 
-            List<CppType> outParams = outField.getSubTypes();
-            List<CppType> inParams = inField.getSubTypes();
+            List<OneofItem> outParams = outField.getSubTypes();
+            List<OneofItem> inParams = inField.getSubTypes();
             for(int i=0; i<outParams.size(); i++)
             {
-                switchBody.append(String.format("\tcase %s::%sCase::k%s:",inStructType.toString(),outField.getName(), capitalise(outParams.get(i).getVariantName()))).append(lineSeparator());
-                switchBody.append(String.format("\t\t%s.%s.Set<%s>(Proto_Cast<%s>(%s.%s()));",outputItemName,outField.getName(),outParams.get(i).toString(),outParams.get(i).toString(),inputItemName,inParams.get(i).getVariantName())).append(lineSeparator());
+                switchBody.append(String.format("\tcase %s::%sCase::k%s:",inStructType.toString(),outField.getName(), capitalise(outParams.get(i).name))).append(lineSeparator());
+                switchBody.append(String.format("\t\t%s.%s.Set<%s>(Proto_Cast<%s>(%s.%s()));",outputItemName,outField.getName(),outParams.get(i).type.toString(),outParams.get(i).type.toString(),inputItemName,inParams.get(i).name)).append(lineSeparator());
                 switchBody.append("\t\tbreak;").append(lineSeparator());
             }
             switchBody.append('}');
@@ -240,17 +241,27 @@ class CastGenerator
             AtomicInteger index = new AtomicInteger(0);
             outField.getSubTypes().forEach(param -> {
                 switchBody.append(String.format("\tcase %d:",index.get())).append(lineSeparator());
-                if(isMessageNamespace(param.toString()) && !param.isKindOf(CppType.Kind.Primitive))
+                final String typeName = param.type.toString();
+                
+                if(isMessageNamespace(typeName) && !param.type.isKindOf(CppType.Kind.Primitive))
                 {
                     switchBody.append(String.format("\t\t%s.set_allocated_%s(new %s(Proto_Cast<%s>(%s.%s.Get<%s>())));",
-                    					outputItemName,param.getVariantName(),param.toString(),param.toString(),
-                    					inputItemName,inField.getName(),inField.getSubTypes().get(index.get()).toString())).append(lineSeparator());
+                    					outputItemName, 
+                    					param.name, 
+                    					typeName, 
+                    					typeName,
+                    					inputItemName, 
+                    					inField.getName(),
+                    					inField.getSubTypes().get(index.get()).type.toString())).append(lineSeparator());
                 }
                 else
                 {
                     switchBody.append(String.format("\t\t%s.set_%s(Proto_Cast<%s>(%s.%s.Get<%s>()));",
-                    					outputItemName,param.getVariantName(),param.toString(),inputItemName,
-                    					inField.getName(),inField.getSubTypes().get(index.get()).toString())).append(lineSeparator());
+                    					outputItemName,
+                    					param.name, 
+                    					typeName, 
+                    					inputItemName,
+                    					inField.getName(),inField.getSubTypes().get(index.get()).type.toString())).append(lineSeparator());
                 }
                 switchBody.append("\t\tbreak;").append(lineSeparator());
                 index.getAndIncrement();

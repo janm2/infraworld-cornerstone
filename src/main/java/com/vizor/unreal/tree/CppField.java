@@ -24,7 +24,7 @@ public class CppField extends CppRecord
 {
     private final CppType type;
     private final String name;
-    private final List<CppType> SubTypes; // only for oneOf
+    private final List<OneofItem> SubTypes; // only for oneOf
 
     public final CppJavaDoc javaDoc = new CppJavaDoc();
 
@@ -50,7 +50,7 @@ public class CppField extends CppRecord
     	return !SubTypes.isEmpty();
     }
     
-    public List<CppType> getSubTypes()
+    public List<OneofItem> getSubTypes()
     {
     	return SubTypes;
     }

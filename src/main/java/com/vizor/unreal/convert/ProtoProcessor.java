@@ -38,6 +38,7 @@ import com.vizor.unreal.tree.CppNamespace;
 import com.vizor.unreal.tree.CppRecord;
 import com.vizor.unreal.tree.CppStruct;
 import com.vizor.unreal.tree.CppType;
+import com.vizor.unreal.tree.OneofItem;
 import com.vizor.unreal.tree.preprocessor.CppInclude;
 import com.vizor.unreal.util.MessageOrderResolver;
 import com.vizor.unreal.util.Tuple;
@@ -441,10 +442,11 @@ class ProtoProcessor implements Runnable
             log.debug("adding OneOfElement:");
             field.getSubTypes().addAll(onf.fields().stream().map(i ->
             {
-                CppType t = provider.get(i.type());
-                log.debug("type:" + t.toString() );
-                t.setVariantName(provider.fixFieldName(i.name(), ueType.isA(boolean.class)));
-                return t;
+            	OneofItem item = new OneofItem();
+            	item.type = provider.get(i.type());
+                log.debug("type:" + item.type.toString() );
+                item.name = provider.fixFieldName(i.name(), ueType.isA(boolean.class));
+                return item;
             }).collect(Collectors.toList()));
             
 
