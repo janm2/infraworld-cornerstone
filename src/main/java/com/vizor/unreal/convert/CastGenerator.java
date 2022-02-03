@@ -177,7 +177,7 @@ class CastGenerator
             List<OneofItem> inParams = inField.getSubTypes();
             for(int i=0; i<outParams.size(); i++)
             {
-                switchBody.append(String.format("\tcase %s::%sCase::k%s:",inStructType.toString(),outField.getName(), capitalise(outParams.get(i).name))).append(lineSeparator());
+                switchBody.append(String.format("\tcase %s::%sCase::k%s:",inStructType.toString(),outField.getName(), capitalize(outParams.get(i).name))).append(lineSeparator());
                 switchBody.append(String.format("\t\t%s.%s.Set<%s>(Proto_Cast<%s>(%s.%s()));",outputItemName,outField.getName(),outParams.get(i).type.toString(),outParams.get(i).type.toString(),inputItemName,inParams.get(i).name)).append(lineSeparator());
                 switchBody.append("\t\tbreak;").append(lineSeparator());
             }
@@ -335,8 +335,22 @@ class CastGenerator
         }
     }
 
-    private String capitalise(String s)
+    private String capitalize(String s)
     {
+
+    	// capitalize first letter after number
+    	for(int i = 0; i < s.length(); i++)
+    	{
+    		if(Character.isDigit(s.charAt(i)))
+    		{
+    			if(i+1 < s.length() && !Character.isDigit(s.charAt(i+1)))
+        		{
+    			 	char largeChar = Character.toUpperCase(s.charAt(i+1));
+    			 	s = s.substring(0, i+1) + largeChar +  s.substring(i+2);
+        		}
+    		}
+    	}
+    	
         return s.substring(0, 1).toUpperCase() + s.substring(1);
     }
 
