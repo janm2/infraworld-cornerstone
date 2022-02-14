@@ -121,23 +121,25 @@ public class CppType implements CtLeaf
     private final boolean isTypedef;
     private final boolean isConstant;
     private final boolean isVolatile;
+    
+    private final String defaultValue;
 
     private Class<?> nativeClass = null;
 
     /** The hash code is being cached, because it is kinda hard to calculate **/
     private int hash;
     
-    private CppType(String name, Kind kind)
+    private CppType(String name, String defaultValue, Kind kind)
     {
-        this(name, kind, emptyList());
+        this(name, defaultValue, kind, emptyList());
     }
 
-    private CppType(String name, Kind kind, Collection<CppType> genericParams)
+    private CppType(String name, String defaultValue, Kind kind, Collection<CppType> genericParams)
     {
-        this(name, kind, genericParams, null, Passage.ByValue, false, false, false);
+        this(name, defaultValue, kind, genericParams, null, Passage.ByValue, false, false, false);
     }
 
-    private CppType(String name, Kind kind, Collection<CppType> genericParams, CppType underType, Passage passage,
+    private CppType(String name, String defaultValue, Kind kind, Collection<CppType> genericParams, CppType underType, Passage passage,
                     boolean isConstant, boolean isVolatile, boolean isTypedef)
     {
         stream(Passage.values()).forEach(p -> {
@@ -158,6 +160,7 @@ public class CppType implements CtLeaf
         this.isVolatile = isVolatile;
         this.isTypedef = isTypedef;
         
+        this.defaultValue = defaultValue;
     }
     
     public CppType(CppType another)
@@ -173,6 +176,8 @@ public class CppType implements CtLeaf
         this.isConstant = another.isConstant;
         this.isVolatile = another.isVolatile;
         this.isTypedef = another.isTypedef;
+        
+        this.defaultValue = another.defaultValue;
     }
     
 
@@ -272,6 +277,11 @@ public class CppType implements CtLeaf
     {
         return name;
     }
+    
+    public String getDefaultValue()
+    {
+        return defaultValue;
+    }
 
     public List<CppType> getGenericParams()
     {
@@ -323,7 +333,7 @@ public class CppType implements CtLeaf
                                final boolean isVolatile,
                                final boolean isTypedef)
     {
-        final CppType cppType = new CppType(name, kind, genericParams, getMostUnderType(), passage, isConstant, isVolatile, isTypedef);
+        final CppType cppType = new CppType(name, defaultValue, kind, genericParams, getMostUnderType(), passage, isConstant, isVolatile, isTypedef);
         cppType.setNamespaces(getNamespaces());
 
         // If this is native type, mark compiled type as native too
@@ -436,17 +446,22 @@ public class CppType implements CtLeaf
 
     public static CppType wildcardGeneric(final String name, final Kind kind, final int numParams)
     {
-        return new CppType(name, kind, nCopies(numParams, wildcard));
+        return new CppType(name, "", kind, nCopies(numParams, wildcard));
     }
     
     public static CppType wildcardGenericTypedef(final String name, final Kind kind, final int numParams)
     {
-        return new CppType(name, kind, nCopies(numParams, wildcard), null, Passage.ByValue, false, false, true);
+        return new CppType(name, "", kind, nCopies(numParams, wildcard), null, Passage.ByValue, false, false, true);
     }
 
-    public static CppType plain(String name, Kind kind)
+    public static CppType plain(final String name, Kind kind)
     {
-        return new CppType(name, kind);
+    	return new CppType(name, "", kind);
+    }
+    
+    public static CppType plain(final String name, Kind kind, String defaultValue)
+    {
+        return new CppType(name, defaultValue, kind);
     }
 
     @Override

@@ -221,8 +221,8 @@ class ProtoProcessor implements Runnable
         
         final List<CppClass> workers = workerGenerator.genClass();
 
-        // Generate RPC clients
-        final List<CppClass> clients = new ArrayList<>(services.size());
+        // Generate RPC clients/servers
+        final List<CppClass> classes = new ArrayList<>(services.size());
         final List<CppDelegate> dispatchers = new ArrayList<>(services.size());
 
         for (int i = 0; i < services.size(); i++)
@@ -235,7 +235,7 @@ class ProtoProcessor implements Runnable
             						  new ServerGenerator(service, ueProvider, worker.getType()): 
             						  new ClientGenerator(service, ueProvider, worker.getType());
             
-            clients.add(cg.genClass());
+            classes.add(cg.genClass());
             dispatchers.addAll(cg.getDelegates());
         }
 
@@ -272,7 +272,7 @@ class ProtoProcessor implements Runnable
 
         headerIncludes.addAll(importedProtoNames.stream().map(path->new CppInclude(Header, path + ".h")).collect(Collectors.toList()));
 
-        if (clients.size() > 0 || unrealStructures.size() > 0 || ueEnums.size() > 0)
+        if (classes.size() > 0 || unrealStructures.size() > 0 || ueEnums.size() > 0)
         {
             headerIncludes.add(
                 new CppInclude(Header, args.className + ".generated.h")
@@ -371,7 +371,7 @@ class ProtoProcessor implements Runnable
             unrealStructures.forEach(s -> s.accept(p).newLine());
 
             p.writeInlineComment("Forward class definitions (for delegates)");
-            clients.forEach(c -> p.write("class ").write(c.getType().toString()).writeLine(";"));
+            classes.forEach(c -> p.write("class ").write(c.getType().toString()).writeLine(";"));
             p.newLine();
 
             p.writeInlineComment("Dispatcher delegates");
@@ -384,7 +384,7 @@ class ProtoProcessor implements Runnable
             // Workers are being written to the *.cpp file, have to write them before
             workers.forEach(c -> c.accept(p).newLine());
 
-            clients.forEach(w -> w.accept(p).newLine());
+            classes.forEach(w -> w.accept(p).newLine());
         }
     }
 

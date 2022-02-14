@@ -40,19 +40,19 @@ public final class UnrealTypesProvider extends TypesProvider
     @Override
     protected final void init()
     {
-        register("byte", plain("uint8", Primitive), byte.class);
-        register("int32", plain("int32", Primitive), int.class);
-        register("int64", plain("int64", Primitive), long.class);
-        register("float", plain("float", Primitive), float.class);
-        register("double", plain("double", Primitive), double.class);
-        register("bool", plain("bool", Primitive), boolean.class);
+        register("byte", plain("uint8", Primitive, "0"), byte.class);
+        register("int32", plain("int32", Primitive, "0"), int.class);
+        register("int64", plain("int64", Primitive, "0"), long.class);
+        register("float", plain("float", Primitive, "0.0f"), float.class);
+        register("double", plain("double", Primitive, "0.0"), double.class);
+        register("bool", plain("bool",  Primitive, "false"), boolean.class);
         register("void", plain("void", Primitive), void.class);
 
         registerAlias("int", "int32");
         registerAlias("uint32", "int64"); // using int64 to avoid cast crop
         registerAlias("uint64", "int64"); // nothing can be done here, just use int64
 
-        register("string", plain("FString", Struct), String.class);
+        register("string", plain("FString", Struct, "\"\""), String.class);
         register("map", wildcardGeneric("TMap", Struct, 2), Map.class);
 
         // 'bytes' -> TArray<uint8> (ByteBuffer because 'bytes' doesn't truly conforms to 'array').

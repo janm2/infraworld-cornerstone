@@ -30,6 +30,7 @@ import com.vizor.unreal.tree.CppRecord;
 import com.vizor.unreal.tree.CppRecordContainer;
 import com.vizor.unreal.tree.CppStruct;
 import com.vizor.unreal.tree.CppType;
+import com.vizor.unreal.tree.CppType.Kind;
 import com.vizor.unreal.tree.preprocessor.CppInclude;
 import com.vizor.unreal.tree.preprocessor.CppMacroIf;
 import com.vizor.unreal.tree.preprocessor.CppPragma;
@@ -40,6 +41,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 
 import static com.vizor.unreal.tree.CppRecord.Residence.Header;
 import static java.lang.String.valueOf;
@@ -309,6 +311,7 @@ public class CppPrinter implements AutoCloseable
         if (!struct.getFields().isEmpty())
         {
             newLine().decTab().writeLine("public:").incTab();
+            
             if(config.isServer())
             {
             	writeInlineComment("GRPC Server");
@@ -317,7 +320,35 @@ public class CppPrinter implements AutoCloseable
             {
             	writeInlineComment("Conduits and GRPC stub");
             }
+            
             struct.getFields().forEach(f -> f.accept(this).newLine().newLine());
+            
+            // add default constructor for structs
+            if(structType.getKind() == Kind.Struct)
+            {
+            	write(structType.getName() + " ()");
+	            List<CppField> fields = struct.getFields(); //struct.getFields().stream().filter(f -> f.getType().getDefaultValue() != "").collect(Collectors.toList());
+	            
+	            if(fields.size() > 0)
+	            {
+	            	write(" :").newLine();
+	            }
+	            
+	            final int lastIndex = fields.size()-1;
+	            for (int i = 0; i < fields.size(); i++)
+	            {
+	            	CppField f = fields.get(i);
+	            	write(f.getName() + "(" + f.getType().getDefaultValue() + ")");
+	            	if(i < lastIndex)
+	            	{
+	            		write(",");
+	            	}
+	            	 newLine();
+	            }
+	            
+	            writeLine("{}");
+	            newLine();
+            }
         }
     }
 
