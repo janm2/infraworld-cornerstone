@@ -27,6 +27,7 @@ public class CppStruct extends CppRecord
     private final CppType type;
     private final List<CppType> friendDeclarations = new ArrayList<>();
     private final List<CppField> fields = new ArrayList<>();
+    private CppStruct Perent = null;
 
     public final CppJavaDoc javaDoc = new CppJavaDoc();
 
@@ -35,7 +36,7 @@ public class CppStruct extends CppRecord
         this.type = type;
         this.fields.addAll(fields);
     }
-
+    
     public final CppType getType()
     {
         return type;
@@ -45,7 +46,36 @@ public class CppStruct extends CppRecord
     {
         return unmodifiableList(fields);
     }
+    
+    public final void removeFields(List<CppField> toRemove)
+    {
+    	for(int i = fields.size(); i--> 0;)
+    	{
+    		CppField field = fields.get(i);
+    		
+    		for(CppField remove : toRemove)
+    		{
+    			if(field.getName().equals(remove.getName()) &&
+    			   field.getType().equals(remove.getType())
+    			)
+    			{
+    				fields.remove(i);
+    				break;
+    			}
+    		}
+    	}
+    }
+    
+    public final CppStruct getPerent()
+    {
+        return Perent;
+    }
 
+    public final void SetPerent(CppStruct parent)
+    {
+    	this.Perent = parent;
+    }
+    
     public final void addFriendDeclaration(CppType friend)
     {
         friendDeclarations.add(friend);

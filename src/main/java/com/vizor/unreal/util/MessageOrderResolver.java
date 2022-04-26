@@ -28,6 +28,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import static java.util.Objects.nonNull;
+
 import org.apache.logging.log4j.Logger;
 
 public class MessageOrderResolver
@@ -87,6 +89,14 @@ public class MessageOrderResolver
                         		}
                         		);
             }
+            
+            CppStruct perent = struct.getPerent();
+			if (nonNull(perent) && cache.contains(perent.getType())) 
+            {
+				log.debug("addEdge SubTypes: " + perent.getType() + " -> "+ struct.getType() );
+				graph.addEdge(perent.getType(),  struct.getType());
+            }
+
         }
 
         try

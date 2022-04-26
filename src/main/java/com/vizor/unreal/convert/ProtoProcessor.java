@@ -53,6 +53,8 @@ import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import javax.print.DocFlavor.STRING;
+
 import static com.squareup.wire.schema.Field.Label.REPEATED;
 import static com.vizor.unreal.tree.CppAnnotation.BlueprintReadWrite;
 import static com.vizor.unreal.tree.CppAnnotation.BlueprintType;
@@ -71,6 +73,7 @@ import static com.vizor.unreal.util.Tuple.of;
 import static java.lang.String.join;
 import static java.nio.file.Paths.get;
 import static java.util.Arrays.asList;
+import static java.util.Objects.nonNull;
 import static java.util.Objects.requireNonNull;
 import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toMap;
@@ -202,13 +205,23 @@ class ProtoProcessor implements Runnable
         // Topologically sort structures
         final MessageOrderResolver resolver = new MessageOrderResolver();
         
-        final int[] indices = resolver.sortByInclusion(unrealStructures);
-
-        // Then reorder data types
-        reorder(unrealStructures, indices);
-        reorder(castAssociations, indices);
+        {
+	        final int[] indices = resolver.sortByInclusion(unrealStructures);
+	
+	        // Then reorder data types
+	        reorder(unrealStructures, indices);
+	        reorder(castAssociations, indices);
+        }
 
         final CppNamespace casts = new CastGenerator().genCasts(castAssociations);
+        
+        // consolidate structs to parent structs
+        consolidateStructs(ueProvider, unrealStructures);
+        {
+        	// reorder one more time with the consolidated structs
+        	final int[] indices = resolver.sortByInclusion(unrealStructures);
+        	reorder(unrealStructures, indices);
+        }
 
         log.debug("Found structures (sorted): {}", () ->
             unrealStructures.stream().map(s -> s.getType().getName()).collect(joining(", ", "[", "]")
@@ -543,5 +556,135 @@ class ProtoProcessor implements Runnable
         }
         return false;
     }
-
+    
+    private boolean isDisallowedTypeForConsolidate(String name)
+    {
+    	return name.equals("TArray") ||
+    		   name.equals("TVariant") || 
+    		   name.equals("TMap") ||
+    		   name.equals("FByteArray");
+    }
+    
+    private void consolidateStructs(final TypesProvider provider, List<CppStruct> structs)
+    {
+    	//List<StructPair> structPairs = new ArrayList<>();
+    	
+    	List<CppStruct> consolidatedStructs = new ArrayList<>();
+    	
+    	// get same struct fields
+    	for(CppStruct struct : structs)
+    	{
+    		 //log.info("struct {}", struct.getType().getName());
+    		 List<CppField> fields = struct.getFields();
+    		 
+    		for(CppStruct comperedStruct : structs)
+    	    {
+    			if(struct.getType().getName() == comperedStruct.getType().getName())
+    			{
+    				continue;
+    			}
+    			
+    			List<CppField> comperedfields = comperedStruct.getFields();
+    			
+    			List<CppField> same = new ArrayList<>();
+    			
+	    		for(CppField field : fields)
+	    	    {
+	    			for(CppField comperedfield : comperedfields)
+	 	    	    {
+	    				 if(
+	    					field.getType() == comperedfield.getType() &&
+	    					field.getName().equals(comperedfield.getName()) &&
+	    					!isDisallowedTypeForConsolidate(field.getType().getName())
+	    				   )
+	    				 {
+	    					 same.add(field);
+	    				 }
+	 	    	    }
+	    	    }
+	    		
+	    		if(same.size() > 0)
+	    		{
+	    			
+	    			
+	    			String name = "F";
+	    			for(CppField sameField : same)
+	    			{
+	    				name += sameField.getName();
+	    			}
+	    			name += "Data";
+	    			
+	    			boolean found = false;
+	    			for(CppStruct cosolidated : consolidatedStructs)
+	    			{
+	    				if(cosolidated.getType().getName().equals(name))
+	    				{
+	    					found = true;
+	    					break;
+	    				}
+	    			}
+	    			
+	    			if(found)
+	    			{
+	    				continue;
+	    			}
+	    			
+	    			final CppType type = plain(name, Struct);
+	    			
+	    			final CppStruct consolidatedStruct = new CppStruct(type, same);
+	    			
+	    			consolidatedStruct.addAnnotation(DisplayName, args.className + " " + name);
+	    			consolidatedStruct.addAnnotation(BlueprintType);
+	    			consolidatedStruct.setResidence(Header);
+	    			
+	    			consolidatedStructs.add(consolidatedStruct);
+	    		}
+	    		
+    	    }
+    	}
+    	
+    	// assign parents to the new sturcts
+    	for(CppStruct struct : structs)
+    	{
+    		List<CppField> fields = struct.getFields();
+    		
+    		CppStruct bestFit = null; 
+    		int bestFitsame = 0;
+    		
+	    	for(CppStruct consolidatedStruct  : consolidatedStructs)
+	    	{
+	    		int same = 0;
+	    		
+	    		for(CppField field : fields)
+	    	    {
+	    			for(CppField comperedfield : consolidatedStruct.getFields())
+	 	    	    {
+	    				 if(
+	    					field.getType() == comperedfield.getType() &&
+	    					field.getName().equals(comperedfield.getName()) &&
+	    					!isDisallowedTypeForConsolidate(field.getType().getName())
+	    				   )
+	    				 {
+	    					 same++;
+	    				 }
+	 	    	    }
+	    	    }
+	    		
+	    		
+	    		if(bestFitsame < same)
+	    		{
+	    			bestFit = consolidatedStruct;
+	    			bestFitsame = same;
+	    		}
+	    	}
+	    	
+	    	if(nonNull(bestFit))
+	    	{
+	    		struct.removeFields(bestFit.getFields());
+	    		struct.SetPerent(bestFit);
+	    	}
+    	}
+    	
+    	structs.addAll(0, consolidatedStructs);
+    }
 }

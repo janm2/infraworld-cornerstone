@@ -289,10 +289,18 @@ public class CppPrinter implements AutoCloseable
         decoratorWriter.writeApi(this);
 
         structType.accept(this);
-        if (nonNull(superType))
+        
+        // TODO: this should be refactored, this code should be depending on if it's struct or class and not magical parameter
+        if (nonNull(superType)) 
         {
             write(" : public ");
             superType.accept(this);
+        }
+        else if (nonNull(struct.getPerent())) 
+        {
+        	 write(" : public ");
+        	 CppStruct parent = struct.getPerent();
+        	 parent.getType().accept(this);
         }
 
         newLine();
